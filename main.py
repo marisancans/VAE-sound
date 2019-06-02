@@ -54,6 +54,7 @@ def create_images(size, buffer_size):
 LR = 0.01
 batch_size = 32
 buffer_size = 1000
+BETA = 250
 
 params = list(encoder.parameters()) + list(decoder.parameters())
 optimizer = torch.optim.Adam(params, LR)
@@ -89,7 +90,7 @@ for i in range(1000000):
     
     loss_recunstruction = loss_fn(decoded, batch_t)
 
-    loss_kl = 250 * 0.5 * torch.mean(1.0 + torch.log(z_sigma**2) - z_mu**2 - z_sigma**2)
+    loss_kl = BETA * 0.5 * torch.mean(1.0 + torch.log(z_sigma**2) - z_mu**2 - z_sigma**2)
     loss = loss_recunstruction + loss_kl
 
     optimizer.zero_grad()
