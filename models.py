@@ -3,6 +3,60 @@ import torch.nn.functional as F
 import torchvision.models as models
 import torch.nn as nn
 
+from torch.utils.data.dataset import Dataset
+import random as random
+import numpy as np
+import cv2
+
+def rnd_color():
+    f = lambda : random.randint(0, 255)
+    return f(), f(), f()
+
+def create_images(image_size, buffer_size):
+    print(f'Generating samples...')
+    buffer = []
+
+    for nth_img in range(buffer_size):
+        r, g, b = rnd_color()
+            
+        img = np.ones((image_size, image_size, 3), np.uint8)
+        img[:] = 255, 0, 0
+
+        radius = random.randint(int(image_size/5), int(image_size/2))
+        rnd_x = random.randint(0, image_size)
+        rnd_y = random.randint(0, image_size)
+        cv2.circle(img, (rnd_x, rnd_y), 10, (0, 0, r), -1)
+
+        buffer.append(img)
+
+        if (nth_img + 1)  % (buffer_size // 10) == 0:
+            print(f'{((nth_img + 1)/buffer_size) * 100}%')
+    
+    return buffer
+
+class CustomDataset(Dataset):
+    def __init__(self, args):
+        images = create_images(args.image_size, args.buffer_size)
+
+        print('Movng to device...')
+        with torch.no_grad(): # We dont have to store function graph for training data
+            self.data_t = torch.FloatTensor(images).to(args.device)
+            self.data_t = self.data_t.permute(0, 3, 1, 2) # (B, H, W, C) -->  (B, C, H, W)
+        
+    def __getitem__(self, index):
+        return self.data_t[index]
+
+    def __len__(self):
+        return len(self.data_t)
+
+    
+        
+
+def weights_init(m):
+    if isinstance(m, nn.Conv2d):
+        xavier(m.weight.data)
+        xavier(m.bias.data)
+
 class Encoder(torch.nn.Module):
     def __init__(self, args):    
         super().__init__()
@@ -25,6 +79,7 @@ class Encoder(torch.nn.Module):
             self.seq.add_module(name, module)
 
         self.seq.add_module('avg_pool', torch.nn.AdaptiveAvgPool2d(output_size=1))
+        
 
 
     def forward(self, x):
@@ -37,6 +92,8 @@ class Encoder(torch.nn.Module):
         # VAE
         z_mu = self.mu.forward(x)
         z_sigma = self.sigma.forward(x)
+
+
         eps = torch.randn(bs, self.args.z_size).to(self.args.device) * z_sigma + z_mu # Sampling epsilon from normal distributions
         
         
@@ -98,6 +155,8 @@ class Decoder(torch.nn.Module):
                 break
 
             i += 1
+            
+        self.seq.apply(weights_init)
             
             
     def forward(self, x):
