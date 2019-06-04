@@ -18,7 +18,7 @@ parser.add_argument('-lr', default=0.001, type=float, help='Learning rate')
 parser.add_argument('-batch_size', default=32, type=int)
 parser.add_argument('-epoch', default=10000, type=int)
 
-parser.add_argument('-buffer_size', default=1000, type=int, help='How many images are generated and stored on device')
+parser.add_argument('-buffer_size', default=100, type=int, help='How many images are generated and stored on device')
 parser.add_argument('-beta', default=1.0, type=float, help='Beta hyperparameter in beta VAE')
 parser.add_argument('-image_size', default=63, type=int, help='Aviable sizes = 3, 7, 15, 31, 63, 127, 255, 511')
 parser.add_argument('-show', default=True, type=arg_to_bool)
@@ -46,12 +46,12 @@ def show(truth_t, pred_t):
     cv2.imshow('image', img)
     cv2.waitKey(1)
 
-def save(encoder, decoder, i):
+def save(encoder, decoder, epoch):
     if not os.path.exists(save_dir):
         os.makedirs(save_dir)
 
-    torch.save(encoder.state_dict(), save_dir + f'/encoder_{i}.pth')
-    torch.save(decoder.state_dict(), save_dir + f'/decoder_{i}.pth')
+    torch.save(encoder.state_dict(), save_dir + f'/encoder_{epoch}.pth')
+    torch.save(decoder.state_dict(), save_dir + f'/decoder_{epoch}.pth')
 
 
 dataset = CustomDataset(args)
@@ -88,7 +88,7 @@ for epoch in range(1, args.epoch):
     print(f'epoch: {epoch}   |    kl: {epoch_loss_kl:.4}    |    rec: {epoch_loss_rec:.4}')        
 
     if epoch % 100 == 0:
-        save(encoder, decoder, i)
+        save(encoder, decoder, epoch)
 
 
 if __name__ == '__main__':
