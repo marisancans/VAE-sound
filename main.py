@@ -22,6 +22,8 @@ parser.add_argument('-buffer_size', default=100, type=int, help='How many images
 parser.add_argument('-beta', default=1.0, type=float, help='Beta hyperparameter in beta VAE')
 parser.add_argument('-image_size', default=63, type=int, help='Aviable sizes = 3, 7, 15, 31, 63, 127, 255, 511')
 parser.add_argument('-show', default=True, type=arg_to_bool)
+
+parser.add_argument('-load', default='', help='Specify save folder name and the last epoch will be tanken')
 args = parser.parse_args()
 
 print('Using device:', args.device)
@@ -50,8 +52,17 @@ def save(encoder, decoder, epoch):
     if not os.path.exists(save_dir):
         os.makedirs(save_dir)
 
-    torch.save(encoder.state_dict(), save_dir + f'/encoder_{epoch}.pth')
-    torch.save(decoder.state_dict(), save_dir + f'/decoder_{epoch}.pth')
+    torch.save(encoder.state_dict(), save_dir + f'/{epoch}_encoder.pth')
+    torch.save(decoder.state_dict(), save_dir + f'/{epoch}_decoder.pth')
+
+def load(path):
+    if not os.path.exists(path):
+        print('Load path doesnt exist!')
+    else:
+        files = [f for f in os.listdir(path) if os.isfile(os.path.join(path, f))].sort()
+    
+    return files
+
 
 
 dataset = CustomDataset(args)
@@ -66,7 +77,13 @@ for epoch in range(1, args.epoch):
     for batch_t in dataset_loader:
         z_vector, z_mu, z_sigma = encoder.forward(batch_t)
         decoded = decoder.forward(z_vector)
+
+        if args.show:
+            show(batch_t[0], decoded[0])
         
+        if args.load:
+            continue
+
         loss_recunstruction = reconstruction_loss_fn(decoded, batch_t)
 
         loss_kl = args.beta * 0.5 * (1.0 + torch.log(z_sigma**2) - z_mu**2 - z_sigma**2)
@@ -80,14 +97,13 @@ for epoch in range(1, args.epoch):
         epoch_loss_kl.append(float(loss_kl))
         epoch_loss_rec.append(float(loss_recunstruction))
 
-        if args.show:
-            show(batch_t[0], decoded[0])
+
 
     epoch_loss_kl = np.average(np.array(epoch_loss_kl))
     epoch_loss_rec = np.average(np.array(epoch_loss_rec))
     print(f'epoch: {epoch}   |    kl: {epoch_loss_kl:.4}    |    rec: {epoch_loss_rec:.4}')        
 
-    if epoch % 100 == 0:
+    if epoch % 50 == 0:
         save(encoder, decoder, epoch)
 
 
